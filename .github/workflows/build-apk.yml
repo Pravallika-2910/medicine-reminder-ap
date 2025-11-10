@@ -1,0 +1,43 @@
+name: Build Kivy APK
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up environment
+        run: |
+          sudo apt update
+          sudo apt install -y python3-pip openjdk-17-jdk git zip unzip
+          pip install buildozer Cython
+
+      - name: Initialize buildozer if needed
+        run: |
+          if [ ! -f buildozer.spec ]; then
+            buildozer init
+          fi
+          sed -i 's/title = My Application/title = Medicine Reminder/' buildozer.spec
+          sed -i 's/package.name = myapp/package.name = medicinereminder/' buildozer.spec
+          sed -i 's/package.domain = org.test/package.domain = org.test/' buildozer.spec
+          sed -i 's/requirements = python3,kivy/requirements = python3,kivy,plyer/' buildozer.spec
+          echo "android.permissions = INTERNET, VIBRATE, FOREGROUND_SERVICE, WAKE_LOCK, RECEIVE_BOOT_COMPLETED" >> buildozer.spec
+          echo "orientation = portrait" >> buildozer.spec
+          echo "fullscreen = 0" >> buildozer.spec
+
+      - name: Build APK
+        env:
+          BUILDOZER_ALLOW_ROOT: "1"
+        run: |
+          buildozer android debug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: medicine-reminder-apk
+          path: bin/*.apk
