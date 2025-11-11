@@ -2,51 +2,55 @@ name: Build Kivy APK
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  build-apk:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y python3-pip openjdk-17-jdk git zip unzip
-          pip install buildozer Cython
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y python3-pip openjdk-17-jdk git zip unzip wget
+        pip install buildozer Cython
 
-      - name: Prepare Android SDK
-        run: |
-          mkdir -p $HOME/.buildozer/android/platform
-          cd $HOME/.buildozer/android/platform
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip -d cmdline-tools
-          yes | cmdline-tools/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/.buildozer/android/platform/android-sdk "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.1.8937393"
+    - name: Prepare Android SDK
+      run: |
+        mkdir -p $HOME/.buildozer/android/platform
+        cd $HOME/.buildozer/android/platform
+        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+        unzip cmdline-tools.zip -d cmdline-tools
+        yes | cmdline-tools/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/.buildozer/android/platform/android-sdk "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.1.8937393"
 
-      - name: Initialize Buildozer
-        run: |
-          if [ ! -f buildozer.spec ]; then
-            buildozer init
-          fi
-          sed -i 's/title = My Application/title = Medicine Reminder/' buildozer.spec
-          sed -i 's/package.name = myapp/package.name = medicinereminder/' buildozer.spec
-          sed -i 's/package.domain = org.test/package.domain = org.test/' buildozer.spec
-          sed -i 's/requirements = python3,kivy/requirements = python3,kivy,plyer/' buildozer.spec
-          echo "android.permissions = INTERNET, VIBRATE, FOREGROUND_SERVICE, WAKE_LOCK, RECEIVE_BOOT_COMPLETED" >> buildozer.spec
-          echo "orientation = portrait" >> buildozer.spec
-          echo "fullscreen = 0" >> buildozer.spec
+    - name: Initialize buildozer if needed
+      run: |
+        if [ ! -f buildozer.spec ]; then
+          buildozer init
+        fi
 
-      - name: Build APK
-        env:
-          BUILDOZER_ALLOW_ROOT: "1"
-        run: |
-          buildozer android debug
+    - name: Configure buildozer.spec
+      run: |
+        sed -i 's/title = My Application/title = Medicine Reminder/' buildozer.spec
+        sed -i 's/package.name = myapp/package.name = medicinereminder/' buildozer.spec
+        sed -i 's/package.domain = org.test/package.domain = org.test/' buildozer.spec
+        sed -i 's/requirements = python3,kivy/requirements = python3,kivy,plyer/' buildozer.spec
+        sed -i 's/# (str) Source code where the main.py live/source.dir = ./' buildozer.spec
+        sed -i 's/# (list) Permissions/android.permissions = INTERNET, VIBRATE, FOREGROUND_SERVICE, WAKE_LOCK, RECEIVE_BOOT_COMPLETED/' buildozer.spec
+        echo "android.services = service:service/main.py" >> buildozer.spec
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: medicine-reminder-apk
-          path: bin/*.apk
+    - name: Build APK
+      run: |
+        export BUILDOZER_ALLOW_ROOT=1
+        buildozer android debug
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: medicine-reminder-apk
+        path: bin/*.apk
