@@ -46,8 +46,14 @@ jobs:
         sed -i 's/package.name = myapp/package.name = medicinereminder/' buildozer.spec
         sed -i 's/package.domain = org.test/package.domain = org.test/' buildozer.spec
         sed -i 's/requirements = python3,kivy/requirements = python3,kivy,plyer/' buildozer.spec
-        sed -i 's/# (str) Source code where the main.py live/source.dir = ./' buildozer.spec
-        sed -i 's/# (list) Permissions/android.permissions = INTERNET, VIBRATE, FOREGROUND_SERVICE, WAKE_LOCK, RECEIVE_BOOT_COMPLETED/' buildozer.spec
+        # Add source.dir only if it doesn't exist
+        if ! grep -q "source.dir =" buildozer.spec; then
+          echo "source.dir = ." >> buildozer.spec
+        fi
+        # Add permissions only if missing
+        if ! grep -q "android.permissions" buildozer.spec; then
+          echo "android.permissions = INTERNET, VIBRATE, FOREGROUND_SERVICE, WAKE_LOCK, RECEIVE_BOOT_COMPLETED" >> buildozer.spec
+        fi
         echo "android.api = 33" >> buildozer.spec
         echo "android.ndk = 25b" >> buildozer.spec
         echo "android.sdk = 33" >> buildozer.spec
