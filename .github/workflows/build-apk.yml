@@ -7,17 +7,26 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up environment
+      - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y python3-pip openjdk-17-jdk git zip unzip
           pip install buildozer Cython
 
-      - name: Initialize buildozer if needed
+      - name: Prepare Android SDK
+        run: |
+          mkdir -p $HOME/.buildozer/android/platform
+          cd $HOME/.buildozer/android/platform
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip -d cmdline-tools
+          yes | cmdline-tools/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/.buildozer/android/platform/android-sdk "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.1.8937393"
+
+      - name: Initialize Buildozer
         run: |
           if [ ! -f buildozer.spec ]; then
             buildozer init
